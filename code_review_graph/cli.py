@@ -351,6 +351,186 @@ def _handle_data_dir_option(args, repo_root: Path) -> None:
             sys.exit(1)
 
 
+def _handle_tool_command(args: argparse.Namespace) -> None:
+    """Dispatch MCP tool commands and print JSON results."""
+    from . import tools
+
+    # Map kebab-case command names to snake_case tool function names/modules
+    cmd = args.command
+    result = None
+
+    if cmd == "detect-changes":
+        result = tools.detect_changes_func(
+            base=args.base,
+            include_source=getattr(args, "include_source", False),
+            max_depth=getattr(args, "max_depth", 2),
+            repo_root=args.repo,
+            detail_level=getattr(args, "detail_level", "standard") or "standard",
+        )
+    elif cmd == "list-graph-stats":
+        result = tools.list_graph_stats(repo_root=args.repo)
+    elif cmd == "list-repos":
+        result = tools.list_repos_func()
+    elif cmd == "build-or-update-graph":
+        result = tools.build_or_update_graph(
+            full_rebuild=args.rebuild,
+            repo_root=args.repo,
+            base=args.base,
+            postprocess=args.postprocess,
+        )
+    elif cmd == "generate-wiki":
+        result = tools.generate_wiki_func(
+            repo_root=args.repo,
+            force=args.force,
+        )
+    elif cmd == "get-impact-radius":
+        result = tools.get_impact_radius(
+            changed_files=args.changed_files or None,
+            max_depth=args.max_depth,
+            max_results=args.max_results,
+            repo_root=args.repo,
+            base=args.base,
+            detail_level=args.detail_level,
+        )
+    elif cmd == "query-graph":
+        result = tools.query_graph(
+            pattern=args.pattern,
+            target=args.target,
+            repo_root=args.repo,
+            detail_level=args.detail_level,
+        )
+    elif cmd == "semantic-search":
+        result = tools.semantic_search_nodes(
+            query=args.query,
+            kind=args.kind,
+            limit=args.limit,
+            repo_root=args.repo,
+            detail_level=args.detail_level,
+        )
+    elif cmd == "get-review-context":
+        result = tools.get_review_context(
+            changed_files=args.changed_files or None,
+            max_depth=args.max_depth,
+            include_source=not args.no_source,
+            max_lines_per_file=args.max_lines,
+            repo_root=args.repo,
+            base=args.base,
+            detail_level=args.detail_level,
+        )
+    elif cmd == "get-affected-flows":
+        result = tools.get_affected_flows_func(
+            changed_files=args.changed_files or None,
+            base=args.base,
+            repo_root=args.repo,
+        )
+    elif cmd == "list-flows":
+        result = tools.list_flows(
+            repo_root=args.repo,
+            sort_by=args.sort_by,
+            limit=args.limit,
+            kind=args.kind,
+            detail_level=args.detail_level,
+        )
+    elif cmd == "get-flow":
+        result = tools.get_flow(
+            flow_id=args.id,
+            flow_name=args.name,
+            include_source=args.include_source,
+            repo_root=args.repo,
+        )
+    elif cmd == "list-communities":
+        result = tools.list_communities_func(
+            repo_root=args.repo,
+            sort_by=args.sort_by,
+            min_size=args.min_size,
+            detail_level=args.detail_level,
+        )
+    elif cmd == "get-community":
+        result = tools.get_community_func(
+            community_id=args.id,
+            community_name=args.name,
+            include_members=args.include_members,
+            repo_root=args.repo,
+        )
+    elif cmd == "get-architecture-overview":
+        result = tools.get_architecture_overview_func(repo_root=args.repo)
+    elif cmd == "embed-graph":
+        result = tools.embed_graph(
+            repo_root=args.repo,
+            model=args.model,
+            provider=args.provider,
+        )
+    elif cmd == "get-docs-section":
+        result = tools.get_docs_section(
+            section_name=args.section_name,
+            repo_root=args.repo,
+        )
+    elif cmd == "find-large-functions":
+        result = tools.find_large_functions(
+            min_lines=args.min_lines,
+            kind=args.kind,
+            file_path_pattern=args.file_pattern,
+            limit=args.limit,
+            repo_root=args.repo,
+        )
+    elif cmd == "get-hub-nodes":
+        result = tools.get_hub_nodes_func(
+            repo_root=args.repo,
+            top_n=args.top_n,
+        )
+    elif cmd == "get-bridge-nodes":
+        result = tools.get_bridge_nodes_func(
+            repo_root=args.repo,
+            top_n=args.top_n,
+        )
+    elif cmd == "get-knowledge-gaps":
+        result = tools.get_knowledge_gaps_func(repo_root=args.repo)
+    elif cmd == "get-surprising-connections":
+        result = tools.get_surprising_connections_func(
+            repo_root=args.repo,
+            top_n=args.top_n,
+        )
+    elif cmd == "get-suggested-questions":
+        result = tools.get_suggested_questions_func(repo_root=args.repo)
+    elif cmd == "traverse-graph":
+        result = tools.traverse_graph_func(
+            query=args.query,
+            mode=args.mode,
+            depth=args.depth,
+            token_budget=args.token_budget,
+            repo_root=args.repo,
+        )
+    elif cmd == "refactor":
+        result = tools.refactor_func(
+            mode=args.mode,
+            old_name=args.old_name,
+            new_name=args.new_name,
+            kind=args.kind,
+            file_pattern=args.file_pattern,
+            repo_root=args.repo,
+        )
+    elif cmd == "apply-refactor":
+        result = tools.apply_refactor_func(
+            refactor_id=args.refactor_id,
+            dry_run=args.dry_run,
+            repo_root=args.repo,
+        )
+    elif cmd == "get-wiki-page":
+        result = tools.get_wiki_page_func(
+            community_name=args.community_name,
+            repo_root=args.repo,
+        )
+    elif cmd == "cross-repo-search":
+        result = tools.cross_repo_search_func(
+            query=args.query,
+            kind=args.kind,
+            limit=args.limit,
+        )
+
+    if result:
+        print(json.dumps(result, indent=2, default=str))
+
+
 def main() -> None:
     """Main CLI entry point."""
     ap = argparse.ArgumentParser(
@@ -584,8 +764,205 @@ def main() -> None:
     # detect-changes
     detect_cmd = sub.add_parser("detect-changes", help="Analyze change impact")
     detect_cmd.add_argument("--base", default="HEAD~1", help="Git diff base (default: HEAD~1)")
-    detect_cmd.add_argument("--brief", action="store_true", help="Show brief summary only")
+    detect_cmd.add_argument("--brief", action="store_true", help="Show brief summary only (for human output)")
+    detect_cmd.add_argument("--detail-level", choices=["standard", "minimal"], help="JSON detail level")
+    detect_cmd.add_argument("--include-source", action="store_true", help="Include source snippets in JSON")
+    detect_cmd.add_argument("--max-depth", type=int, default=2, help="Impact radius depth")
     detect_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    detect_cmd.add_argument(
+        "--data-dir",
+        default=None,
+        help="External directory to store graph database (useful for network shares)"
+    )
+
+    # list-graph-stats
+    stats_tool_cmd = sub.add_parser("list-graph-stats", help="Get graph statistics in JSON format")
+    stats_tool_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    stats_tool_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # list-repos
+    sub.add_parser("list-repos", help="List registered repositories in JSON format")
+
+    # build-or-update-graph
+    build_tool_cmd = sub.add_parser("build-or-update-graph", help="Build or update graph (tool interface)")
+    build_tool_cmd.add_argument("--rebuild", action="store_true", help="Full rebuild")
+    build_tool_cmd.add_argument("--repo", default=None, help="Repository root")
+    build_tool_cmd.add_argument("--base", default="HEAD~1", help="Git diff base")
+    build_tool_cmd.add_argument("--postprocess", choices=["full", "minimal", "none"], default="full")
+
+    # generate-wiki
+    wiki_tool_cmd = sub.add_parser("generate-wiki", help="Generate markdown wiki (tool interface)")
+    wiki_tool_cmd.add_argument("--repo", default=None, help="Repository root")
+    wiki_tool_cmd.add_argument("--force", action="store_true", help="Force regenerate all")
+
+    # get-impact-radius
+    impact_cmd = sub.add_parser("get-impact-radius", help="Analyze the blast radius of changed files")
+    impact_cmd.add_argument("changed_files", nargs="*", help="Files to analyze (auto-detect if omitted)")
+    impact_cmd.add_argument("--max-depth", type=int, default=2, help="Blast radius depth (default: 2)")
+    impact_cmd.add_argument("--max-results", type=int, default=500, help="Max nodes to return")
+    impact_cmd.add_argument("--base", default="HEAD~1", help="Git ref for auto-detect (default: HEAD~1)")
+    impact_cmd.add_argument("--detail-level", choices=["standard", "minimal"], default="standard")
+    impact_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    impact_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # query-graph
+    query_cmd = sub.add_parser("query-graph", help="Run a predefined graph query")
+    query_cmd.add_argument("pattern", help="Query pattern (callers_of, callees_of, tests_for, etc.)")
+    query_cmd.add_argument("target", help="Node name, qualified name, or file path")
+    query_cmd.add_argument("--detail-level", choices=["standard", "minimal"], default="standard")
+    query_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    query_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # semantic-search
+    search_cmd = sub.add_parser("semantic-search", help="Search for nodes by name or semantic similarity")
+    search_cmd.add_argument("query", help="Search string")
+    search_cmd.add_argument("--kind", help="Filter by kind (Function, Class, File, etc.)")
+    search_cmd.add_argument("--limit", type=int, default=20, help="Max results")
+    search_cmd.add_argument("--detail-level", choices=["standard", "minimal"], default="standard")
+    search_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    search_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-review-context
+    review_ctx_cmd = sub.add_parser("get-review-context", help="Generate focused review context subgraph")
+    review_ctx_cmd.add_argument("changed_files", nargs="*", help="Files to review (auto-detect if omitted)")
+    review_ctx_cmd.add_argument("--max-depth", type=int, default=2, help="Impact depth (default: 2)")
+    review_ctx_cmd.add_argument("--no-source", action="store_true", help="Skip source snippets")
+    review_ctx_cmd.add_argument("--max-lines", type=int, default=200, help="Max source lines per file")
+    review_ctx_cmd.add_argument("--base", default="HEAD~1", help="Git ref for auto-detect (default: HEAD~1)")
+    review_ctx_cmd.add_argument("--detail-level", choices=["standard", "minimal"], default="standard")
+    review_ctx_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    review_ctx_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-affected-flows
+    aff_flows_cmd = sub.add_parser("get-affected-flows", help="Find execution flows affected by changed files")
+    aff_flows_cmd.add_argument("changed_files", nargs="*", help="Changed files (auto-detect if omitted)")
+    aff_flows_cmd.add_argument("--base", default="HEAD~1", help="Git ref for auto-detect (default: HEAD~1)")
+    aff_flows_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    aff_flows_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # list-flows
+    flows_cmd = sub.add_parser("list-flows", help="List execution flows sorted by criticality")
+    flows_cmd.add_argument("--sort-by", default="criticality", help="Sort column (criticality, depth, etc.)")
+    flows_cmd.add_argument("--limit", type=int, default=50, help="Max flows")
+    flows_cmd.add_argument("--kind", help="Filter by entry point kind (e.g. Test, Function)")
+    flows_cmd.add_argument("--detail-level", choices=["standard", "minimal"], default="standard")
+    flows_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    flows_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-flow
+    flow_cmd = sub.add_parser("get-flow", help="Get details of a single execution flow")
+    flow_cmd.add_argument("--id", type=int, help="Flow ID")
+    flow_cmd.add_argument("--name", help="Flow name (partial match)")
+    flow_cmd.add_argument("--include-source", action="store_true", help="Include source snippets")
+    flow_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    flow_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # list-communities
+    comm_cmd = sub.add_parser("list-communities", help="List detected code communities")
+    comm_cmd.add_argument("--sort-by", default="size", help="Sort column (size, cohesion, name)")
+    comm_cmd.add_argument("--min-size", type=int, default=0, help="Min community size")
+    comm_cmd.add_argument("--detail-level", choices=["standard", "minimal"], default="standard")
+    comm_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    comm_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-community
+    get_comm_cmd = sub.add_parser("get-community", help="Get details of a single code community")
+    get_comm_cmd.add_argument("--id", type=int, help="Community ID")
+    get_comm_cmd.add_argument("--name", help="Community name (partial match)")
+    get_comm_cmd.add_argument("--include-members", action="store_true", help="Include member node details")
+    get_comm_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    get_comm_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-architecture-overview
+    arch_cmd = sub.add_parser("get-architecture-overview", help="Generate an architecture overview")
+    arch_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    arch_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # embed-graph
+    embed_cmd = sub.add_parser("embed-graph", help="Compute vector embeddings for semantic search")
+    embed_cmd.add_argument("--model", help="Embedding model name")
+    embed_cmd.add_argument("--provider", help="Provider (local, openai, google, minimax)")
+    embed_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    embed_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-docs-section
+    docs_cmd = sub.add_parser("get-docs-section", help="Retrieve optimized documentation sections")
+    docs_cmd.add_argument("section_name", help="Section name (usage, review-pr, etc.)")
+    docs_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+
+    # find-large-functions
+    large_cmd = sub.add_parser("find-large-functions", help="Find oversized functions/classes")
+    large_cmd.add_argument("--min-lines", type=int, default=50, help="Min line count")
+    large_cmd.add_argument("--kind", help="Filter by kind")
+    large_cmd.add_argument("--file-pattern", help="Filter by file path pattern")
+    large_cmd.add_argument("--limit", type=int, default=50, help="Max results")
+    large_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    large_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-hub-nodes
+    hub_cmd = sub.add_parser("get-hub-nodes", help="Find most connected nodes (hotspots)")
+    hub_cmd.add_argument("--top-n", type=int, default=10, help="Number of hubs to return")
+    hub_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    hub_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-bridge-nodes
+    bridge_cmd = sub.add_parser("get-bridge-nodes", help="Find architectural chokepoints")
+    bridge_cmd.add_argument("--top-n", type=int, default=10, help="Number of bridges to return")
+    bridge_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    bridge_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-knowledge-gaps
+    gaps_cmd = sub.add_parser("get-knowledge-gaps", help="Identify structural weaknesses")
+    gaps_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    gaps_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-surprising-connections
+    surp_cmd = sub.add_parser("get-surprising-connections", help="Find unexpected architectural coupling")
+    surp_cmd.add_argument("--top-n", type=int, default=15, help="Number of surprises to return")
+    surp_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    surp_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # get-suggested-questions
+    q_cmd = sub.add_parser("get-suggested-questions", help="Auto-generate review questions")
+    q_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    q_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # traverse-graph
+    traverse_cmd = sub.add_parser("traverse-graph", help="BFS/DFS traversal from a node")
+    traverse_cmd.add_argument("query", help="Starting node search query")
+    traverse_cmd.add_argument("--mode", choices=["bfs", "dfs"], default="bfs")
+    traverse_cmd.add_argument("--depth", type=int, default=3, help="Max traversal depth")
+    traverse_cmd.add_argument("--token-budget", type=int, default=2000, help="Approx token limit")
+    traverse_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    traverse_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # refactor
+    ref_cmd = sub.add_parser("refactor", help="Unified refactoring tool (rename, dead-code, suggest)")
+    ref_cmd.add_argument("--mode", choices=["rename", "dead_code", "suggest"], default="rename")
+    ref_cmd.add_argument("--old-name", help="Current symbol name (rename mode)")
+    ref_cmd.add_argument("--new-name", help="Desired new name (rename mode)")
+    ref_cmd.add_argument("--kind", help="Filter by kind (dead-code mode)")
+    ref_cmd.add_argument("--file-pattern", help="Filter by file pattern (dead-code mode)")
+    ref_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    ref_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # apply-refactor
+    apply_ref_cmd = sub.add_parser("apply-refactor", help="Apply a previously previewed refactoring")
+    apply_ref_cmd.add_argument("refactor_id", help="ID from 'refactor' rename preview")
+    apply_ref_cmd.add_argument("--dry-run", action="store_true", help="Preview changes without writing")
+    apply_ref_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+
+    # get-wiki-page
+    wiki_pg_cmd = sub.add_parser("get-wiki-page", help="Retrieve a specific wiki page")
+    wiki_pg_cmd.add_argument("community_name", help="Community name")
+    wiki_pg_cmd.add_argument("--repo", default=None, help="Repository root (auto-detected)")
+    wiki_pg_cmd.add_argument("--data-dir", default=None, help="External directory to store graph database")
+
+    # cross-repo-search
+    cross_cmd = sub.add_parser("cross-repo-search", help="Search across all registered repositories")
+    cross_cmd.add_argument("query", help="Search string")
+    cross_cmd.add_argument("--kind", help="Filter by kind")
+    cross_cmd.add_argument("--limit", type=int, default=20, help="Max results per repo")
 
     # serve / mcp
     serve_cmd = sub.add_parser(
@@ -846,6 +1223,20 @@ def main() -> None:
                     print(f"  {entry['path']}{alias_str}")
         return
 
+    _TOOL_COMMANDS = {
+        "list-graph-stats", "list-repos", "build-or-update-graph",
+        "generate-wiki", "get-impact-radius", "query-graph", "semantic-search",
+        "get-review-context", "get-affected-flows", "list-flows", "get-flow",
+        "list-communities", "get-community", "get-architecture-overview",
+        "embed-graph", "get-docs-section", "find-large-functions", "get-hub-nodes",
+        "get-bridge-nodes", "get-knowledge-gaps", "get-surprising-connections",
+        "get-suggested-questions", "traverse-graph", "refactor", "apply-refactor",
+        "get-wiki-page", "cross-repo-search"
+    }
+    if args.command in _TOOL_COMMANDS:
+        _handle_tool_command(args)
+        return
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     from .graph import GraphStore
@@ -1064,27 +1455,19 @@ def main() -> None:
             print(f"Output: {wiki_dir}")
 
         elif args.command == "detect-changes":
-            from .changes import analyze_changes
-            from .incremental import get_changed_files, get_staged_and_unstaged
+            from .tools.review import detect_changes_func
 
-            base = args.base
-            changed = get_changed_files(repo_root, base)
-            if not changed:
-                changed = get_staged_and_unstaged(repo_root)
-
-            if not changed:
-                print("No changes detected.")
+            result = detect_changes_func(
+                base=args.base,
+                include_source=getattr(args, "include_source", False),
+                max_depth=getattr(args, "max_depth", 2),
+                repo_root=args.repo,
+                detail_level=getattr(args, "detail_level", "standard") or "standard",
+            )
+            if args.brief:
+                print(result.get("summary", "No summary available."))
             else:
-                result = analyze_changes(
-                    store,
-                    changed,
-                    repo_root=str(repo_root),
-                    base=base,
-                )
-                if args.brief:
-                    print(result.get("summary", "No summary available."))
-                else:
-                    print(json.dumps(result, indent=2, default=str))
+                print(json.dumps(result, indent=2, default=str))
 
     finally:
         store.close()
