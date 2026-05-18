@@ -38,6 +38,7 @@ class TestServeCommand:
             repo_root="repo-root",
             auto_watch=True,
             tools=None,
+            lite=False,
         )
 
     def test_mcp_alias_maps_to_serve(self):
@@ -54,6 +55,7 @@ class TestServeCommand:
         mock_serve.assert_called_once_with(
             repo_root="repo-root",
             auto_watch=False,
+            lite=False,
         )
 
 

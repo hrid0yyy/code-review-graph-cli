@@ -70,6 +70,13 @@ from .community_tools import (
     list_communities_func,
 )
 
+# -- composite --------------------------------------------------------------
+from .composite import (
+    explore_codebase_func,
+    find_code_func,
+    review_changes_composite_func,
+)
+
 # -- context ----------------------------------------------------------------
 from .context import get_minimal_context
 
@@ -107,6 +114,10 @@ __all__ = [
     "_BUILTIN_CALL_NAMES",
     "_get_store",
     "_validate_repo_root",
+    # composite
+    "explore_codebase_func",
+    "find_code_func",
+    "review_changes_composite_func",
     # build
     "build_or_update_graph",
     "run_postprocess",

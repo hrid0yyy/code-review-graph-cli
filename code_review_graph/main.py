@@ -31,6 +31,8 @@ from .tools import (
     cross_repo_search_func,
     detect_changes_func,
     embed_graph,
+    explore_codebase_func,
+    find_code_func,
     find_large_functions,
     generate_wiki_func,
     get_affected_flows_func,
@@ -53,6 +55,7 @@ from .tools import (
     list_repos_func,
     query_graph,
     refactor_func,
+    review_changes_composite_func,
     run_postprocess,
     semantic_search_nodes,
     traverse_graph_func,
@@ -63,6 +66,15 @@ logger = logging.getLogger(__name__)
 # NOTE: Thread-safe for stdio MCP (single-threaded). If adding HTTP/SSE
 # transport with concurrent requests, replace with contextvars.ContextVar.
 _default_repo_root: str | None = None
+
+# Tools exposed by ``serve --lite`` for local LLM agents.
+LITE_TOOLS = {
+    "explore_codebase_tool",
+    "find_code_tool",
+    "review_changes_composite_tool",
+    "query_graph_tool",
+    "refactor_tool",
+}
 
 
 def _resolve_repo_root(repo_root: Optional[str]) -> Optional[str]:
@@ -863,6 +875,75 @@ def cross_repo_search_tool(
     return cross_repo_search_func(query=query, kind=kind, limit=limit)
 
 
+# ---------------------------------------------------------------------------
+# Composite tools (for --lite mode)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def explore_codebase_tool(
+    repo_root: Optional[str] = None,
+) -> dict:
+    """Full codebase exploration in a single call.
+
+    Returns architecture overview (community map, coupling warnings),
+    top 10 critical execution flows, and top 5 architectural hotspots.
+    Call this first when entering an unfamiliar codebase.
+
+    Args:
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return explore_codebase_func(repo_root=_resolve_repo_root(repo_root))
+
+
+@mcp.tool()
+def find_code_tool(
+    query: str,
+    kind: Optional[str] = None,
+    expand_top_n: int = 1,
+    repo_root: Optional[str] = None,
+) -> dict:
+    """Search for code and auto-expand relationships of the top result.
+
+    Finds code entities by name or concept, then automatically retrieves
+    callers, callees, and test coverage for the top match. Use this
+    instead of separate search + query calls.
+
+    Args:
+        query: Search string to match against node names or concepts.
+        kind: Optional filter: Function, Class, File, Type, or Test.
+        expand_top_n: Number of top results to expand. Default: 1.
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return find_code_func(
+        query=query, kind=kind, expand_top_n=expand_top_n,
+        repo_root=_resolve_repo_root(repo_root),
+    )
+
+
+@mcp.tool()
+def review_changes_composite_tool(
+    base: str = "HEAD~1",
+    include_source: bool = False,
+    repo_root: Optional[str] = None,
+) -> dict:
+    """Complete code review in a single call.
+
+    Combines risk-scored change detection, source snippets with review
+    guidance, and affected execution flow analysis. Call this after
+    making code changes to verify safety before committing.
+
+    Args:
+        base: Git ref to diff against. Default: HEAD~1.
+        include_source: Include source code snippets. Default: False.
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return review_changes_composite_func(
+        base=base, include_source=include_source,
+        repo_root=_resolve_repo_root(repo_root),
+    )
+
+
 @mcp.prompt()
 def review_changes(base: str = "HEAD~1") -> list[dict]:
     """Pre-commit review workflow using detect_changes, affected_flows, and test gaps.
@@ -984,6 +1065,7 @@ def main(
     repo_root: str | None = None,
     tools: str | None = None,
     auto_watch: bool = False,
+    lite: bool = False,
     *,
     transport: str = "stdio",
     host: str | None = None,
@@ -1006,6 +1088,8 @@ def main(
             tools are available.
         auto_watch: Start filesystem watcher in a background daemon thread
             while the MCP server runs.
+        lite: If True and ``tools`` is not set, expose only the 5
+            composite tools optimized for local LLM agents.
         transport: ``"stdio"`` (default) or ``"streamable-http"`` for local HTTP.
         host: Bind address when using HTTP (required for HTTP; set by CLI).
         port: Port when using HTTP (required for HTTP; set by CLI).
@@ -1013,6 +1097,9 @@ def main(
     global _default_repo_root
     root = Path(repo_root) if repo_root else find_project_root()
     _default_repo_root = str(root)
+    # --tools overrides --lite (explicit beats implicit)
+    if lite and not tools:
+        tools = ",".join(LITE_TOOLS)
     _apply_tool_filter(tools)
 
     watch_store: GraphStore | None = None

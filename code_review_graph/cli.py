@@ -981,7 +981,15 @@ def main() -> None:
             "Comma-separated list of tool names to expose "
             "(e.g. query_graph_tool,semantic_search_nodes_tool). "
             "Unlisted tools are removed. Falls back to CRG_TOOLS env var. "
-            "When unset, all tools are available."
+            "When unset, all tools are available. Overrides --lite."
+        ),
+    )
+    serve_cmd.add_argument(
+        "--lite",
+        action="store_true",
+        help=(
+            "Expose only 5 composite tools optimized for local LLM agents: "
+            "explore_codebase, find_code, review_changes, query_graph, refactor"
         ),
     )
     serve_cmd.add_argument(
@@ -1009,6 +1017,14 @@ def main() -> None:
         "--auto-watch",
         action="store_true",
         help="Start filesystem watch in a daemon thread while MCP server runs",
+    )
+    mcp_cmd.add_argument(
+        "--lite",
+        action="store_true",
+        help=(
+            "Expose only 5 composite tools optimized for local LLM agents: "
+            "explore_codebase, find_code, review_changes, query_graph, refactor"
+        ),
     )
 
     # daemon
@@ -1100,6 +1116,7 @@ def main() -> None:
         from .main import main as serve_main
 
         auto_watch = getattr(args, "auto_watch", False)
+        lite = getattr(args, "lite", False)
         if args.command == "serve":
             if args.port is not None and not args.http:
                 serve_cmd.error("--port requires --http")
@@ -1115,11 +1132,17 @@ def main() -> None:
                     host=host,
                     port=port,
                     tools=args.tools,
+                    lite=lite,
                 )
             else:
-                serve_main(repo_root=args.repo, auto_watch=auto_watch, tools=args.tools)
+                serve_main(
+                    repo_root=args.repo, auto_watch=auto_watch,
+                    tools=args.tools, lite=lite,
+                )
         else:
-            serve_main(repo_root=args.repo, auto_watch=auto_watch)
+            serve_main(
+                repo_root=args.repo, auto_watch=auto_watch, lite=lite,
+            )
         return
 
     if args.command == "daemon":
