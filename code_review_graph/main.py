@@ -230,21 +230,25 @@ def query_graph_tool(
     repo_root: Optional[str] = None,
     detail_level: str = "standard",
 ) -> dict:
-    """Run a predefined graph query to explore code relationships.
+    """Run a specific, targeted graph query to explore code relationships.
+
+    Use this tool when you already know a target node (function, class, file) and 
+    need to answer a specific structural question about it that find_code_tool didn't 
+    cover. This is your primary tool for traversing the code graph step-by-step.
 
     Available patterns:
-    - callers_of: Find functions that call the target
-    - callees_of: Find functions called by the target
-    - imports_of: Find what the target imports
-    - importers_of: Find files that import the target
-    - children_of: Find nodes contained in a file or class
-    - tests_for: Find tests for the target
-    - inheritors_of: Find classes inheriting from the target
-    - file_summary: Get all nodes in a file
+    - callers_of: Find functions that call the target.
+    - callees_of: Find functions called by the target.
+    - imports_of: Find what the target file imports.
+    - importers_of: Find files that import the target file.
+    - children_of: Find all methods/functions contained in a file or class.
+    - tests_for: Find tests specifically covering the target.
+    - inheritors_of: Find classes inheriting from the target class.
+    - file_summary: Get a summary of all entities inside a file.
 
     Args:
-        pattern: Query pattern name (see above).
-        target: Node name, qualified name, or file path to query.
+        pattern: The exact query pattern name (must be one of the above).
+        target: Node name, qualified name, or file path to query (e.g., "auth.py" or "login_user").
         repo_root: Repository root path. Auto-detected if omitted.
         detail_level: "standard" for full output, "minimal" for compact summary. Default: standard.
     """
@@ -619,25 +623,26 @@ def refactor_tool(
     file_pattern: Optional[str] = None,
     repo_root: Optional[str] = None,
 ) -> dict:
-    """Graph-powered refactoring operations.
+    """Perform advanced, graph-powered refactoring analysis.
 
-    Unified entry point for rename previews, dead code detection, and
-    refactoring suggestions.
+    Use this tool when you need to clean up the codebase, find unused code, or safely 
+    rename symbols. It uses the structural graph to find things that simple text 
+    searches would miss.
 
-    Modes:
-    - rename: Preview renaming a symbol. Returns an edit list and a refactor_id
-      to pass to apply_refactor_tool. Requires old_name and new_name.
-    - dead_code: Find unreferenced functions/classes (no callers, tests, or
-      importers, and not entry points).
-    - suggest: Get community-driven refactoring suggestions (move misplaced
-      functions, remove dead code).
+    Available Modes:
+    - rename: Safely preview renaming a function or class. It finds all usages and 
+      returns a preview of the edits, plus a `refactor_id` you can use to apply them.
+    - dead_code: Find unreferenced, unused functions and classes. It checks that there 
+      are no callers, tests, or importers, and ensures they aren't framework entry points.
+    - suggest: Get community-driven architectural suggestions, like moving misplaced 
+      functions to better modules to reduce cross-community coupling.
 
     Args:
-        mode: Operation mode: "rename", "dead_code", or "suggest".
-        old_name: (rename) Current symbol name to rename.
-        new_name: (rename) Desired new name for the symbol.
-        kind: (dead_code) Optional filter: Function or Class.
-        file_pattern: (dead_code) Filter by file path substring.
+        mode: The operation mode: "rename", "dead_code", or "suggest".
+        old_name: (Required for rename) Current symbol name to rename.
+        new_name: (Required for rename) Desired new name for the symbol.
+        kind: (Optional for dead_code) Filter by "Function" or "Class".
+        file_pattern: (Optional for dead_code) Filter by a file path substring.
         repo_root: Repository root path. Auto-detected if omitted.
     """
     return refactor_func(
@@ -884,11 +889,18 @@ def cross_repo_search_tool(
 def explore_codebase_tool(
     repo_root: Optional[str] = None,
 ) -> dict:
-    """Full codebase exploration in a single call.
+    """Explore the overall structure and architecture of the codebase in a single call.
+    
+    Use this tool FIRST when you are entering a new codebase, starting a new task, or 
+    need to understand the high-level architecture. It gives you a bird's-eye view of 
+    how the code is organized into "communities" (modules), what the most critical 
+    execution flows are (like API routes or CLI commands), and the central "hotspots" 
+    or hub nodes that many other parts of the code depend on.
 
-    Returns architecture overview (community map, coupling warnings),
-    top 10 critical execution flows, and top 5 architectural hotspots.
-    Call this first when entering an unfamiliar codebase.
+    Returns:
+      - architecture: A map of code communities and any coupling warnings.
+      - critical_flows: Top 10 execution paths and entry points.
+      - hotspots: Top 5 most connected and important nodes in the graph.
 
     Args:
         repo_root: Repository root path. Auto-detected if omitted.
@@ -903,14 +915,19 @@ def find_code_tool(
     expand_top_n: int = 1,
     repo_root: Optional[str] = None,
 ) -> dict:
-    """Search for code and auto-expand relationships of the top result.
+    """Search for specific code entities and automatically expand their relationships.
 
-    Finds code entities by name or concept, then automatically retrieves
-    callers, callees, and test coverage for the top match. Use this
-    instead of separate search + query calls.
+    Use this tool when you need to find a specific function, class, or file by name or 
+    concept AND want to immediately understand its context without making extra tool calls. 
+    It performs a semantic/keyword search, takes the best match, and automatically 
+    finds all functions that call it, all functions it calls, and its test coverage.
+
+    Returns:
+      - search_results: The top matches for your query.
+      - expanded: Detailed relationship data (callers, callees, tests) for the #1 result.
 
     Args:
-        query: Search string to match against node names or concepts.
+        query: Search string to match against node names or concepts (e.g. "auth middleware").
         kind: Optional filter: Function, Class, File, Type, or Test.
         expand_top_n: Number of top results to expand. Default: 1.
         repo_root: Repository root path. Auto-detected if omitted.
@@ -927,11 +944,20 @@ def review_changes_composite_tool(
     include_source: bool = False,
     repo_root: Optional[str] = None,
 ) -> dict:
-    """Complete code review in a single call.
+    """Run a comprehensive, risk-scored code review on your recent changes.
 
-    Combines risk-scored change detection, source snippets with review
-    guidance, and affected execution flow analysis. Call this after
-    making code changes to verify safety before committing.
+    Use this tool AFTER modifying code and BEFORE committing, or when asked to review 
+    a PR/commit. It analyzes the git diff against the base branch, scores the risk of 
+    the changes, checks for untested modifications, and traces the blast radius to see 
+    which critical user-facing execution flows are impacted by your edits.
+
+    Returns:
+      - risk_score / risk_label: Overall risk assessment of the changes.
+      - changed_functions: Functions modified in the diff.
+      - test_gaps: Modified functions that lack test coverage.
+      - affected_flows: Critical execution paths impacted by the changes.
+      - review_guidance: Specific advice on what to test or check.
+      - source_snippets: Source code context for the changes (if include_source=True).
 
     Args:
         base: Git ref to diff against. Default: HEAD~1.
