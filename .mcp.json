@@ -1,8 +1,8 @@
 {
-  "mcpServers": {
-    "code-review-graph": {
-      "command": "uvx",
-      "args": ["code-review-graph", "serve"]
-    }
+ "mcpServers": {
+     "code-review-graph": {
+        "command": "D:\\code-review-graph-cli\\.venv\\Scripts\\code-review-graph.exe",
+        "args": ["serve", "--lite"]
+       }
+     }
   }
-}
